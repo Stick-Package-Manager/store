@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Stick Store — AUR Search</title>
+  <link href="https://fonts.googleapis.com/css2?family=Calistoga&family=Noto+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+:root{--bg:#0b0f14;--fg:#e6eef6;--muted:#98a2b3;--accent:#2eaaff;--card:#0f1620;--radius:10px;font-family:"Noto Sans",system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial}
+*{box-sizing:border-box}html,body{height:100%}body{margin:0;background:var(--bg);color:var(--fg);-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;padding:20px;display:flex;align-items:flex-start;justify-content:center}
+.container{width:100%;max-width:900px}
+.header{margin-bottom:14px}
+.title{font-family:"Calistoga","Noto Sans",sans-serif;font-size:28px;margin:0;letter-spacing:0.4px}
+.tag{margin:4px 0 0;color:var(--muted);font-size:13px}
+.search{margin:12px 0 18px}
+.search-row{display:flex;gap:8px}
+input[type="search"]{flex:1;padding:12px 14px;border:1px solid rgba(255,255,255,0.06);border-radius:10px;font-size:16px;background:transparent;color:var(--fg)}
+input[type="search"]:focus{outline:2px solid rgba(46,170,255,0.12);border-color:var(--accent)}
+.btn{padding:10px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.03);font-weight:600;cursor:pointer}
+.btn.primary{background:linear-gradient(180deg, rgba(46,170,255,0.18), rgba(46,170,255,0.12));color:var(--fg);border:1px solid rgba(46,170,255,0.24)}
+.results{display:grid;grid-template-columns:1fr;gap:12px}
+.card{background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);border:1px solid rgba(255,255,255,0.03);border-radius:var(--radius);padding:14px;box-shadow:0 6px 18px rgba(2,6,23,0.6);overflow:hidden;word-break:break-word;}
+.meta{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.pkgname{font-size:16px;margin:0;color:var(--fg)}
+.pkgver{font-size:13px;color:var(--muted)}
+.pkgdesc{margin:8px 0 10px;color:var(--muted);font-size:14px;line-height:1.3;word-break:break-word}
+.actions{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.cmds{display:flex;flex-direction:column;gap:8px;width:100%;max-width:100%}
+.cmd{display:flex;gap:8px;align-items:center;background:rgba(255,255,255,0.02);padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.02);flex-wrap:wrap}
+code{background:transparent;padding:6px 8px;border-radius:6px;border:1px solid rgba(255,255,255,0.04);font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,"Roboto Mono","Noto Sans Mono",monospace;font-size:13px;color:var(--fg);white-space:nowrap;overflow:auto;max-width:100%}
+.copy-btn{padding:6px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;cursor:pointer;font-weight:700;color:var(--accent)}
+.copy-btn:active{transform:translateY(1px)}
+.copy-btn.copied{background:var(--accent);color:var(--bg);border-color:rgba(46,170,255,0.4);transition:background .18s}
+.aur-link{font-size:13px;color:var(--accent);text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;display:inline-block}
+.footer{margin:18px 0 40px;color:var(--muted);font-size:13px}
+.visually-hidden{position:absolute!important;height:1px;width:1px;overflow:hidden;clip:rect(1px,1px,1px,1px);white-space:nowrap}
+@media (max-width:520px){.search-row{flex-direction:column}.btn{width:100%}.actions{flex-direction:column;align-items:flex-start}.cmds{width:100%}.aur-link{align-self:flex-end}}
+  </style>
+</head>
+<body>
+  <main class="container">
+    <header class="header">
+      <h1 class="title">Stick Store</h1>
+      <p class="tag">A lightweight AUR Search for <a href="https://github.com/Stick-Package-Manager" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none">the Stick Package Manager</a>.</p>
+    </header>
+    <section class="search">
+      <label for="q" class="visually-hidden">Search AUR</label>
+      <div class="search-row">
+        <input id="q" type="search" placeholder="Search AUR packages (name, description, maintainer)..." autocomplete="off" />
+        <button id="searchBtn" class="btn primary">Search</button>
+      </div>
+    </section>
+    <section id="results" class="results" aria-live="polite"></section>
+    <footer class="footer"></footer>
+  </main>
+  <template id="cardTpl">
+    <article class="card">
+      <div class="meta">
+        <h2 class="pkgname"></h2>
+        <div class="pkgver"></div>
+      </div>
+      <div class="actions">
+        <div class="cmds">
+          <div class="cmd">
+            <code class="install-cmd"></code>
+            <button class="copy-btn" data-type="install" title="Copy install command">Copy</button>
+          </div>
+          <div class="cmd">
+            <code class="remove-cmd"></code>
+            <button class="copy-btn" data-type="remove" title="Copy remove command">Copy</button>
+          </div>
+        </div>
+        <a class="aur-link" target="_blank" rel="noopener">View on AUR ↗</a>
+      </div>
+      <p class="pkgdesc"></p>
+    </article>
+  </template>
+  <script>
+const API_BASE = 'https://aur.archlinux.org/rpc/?v=5&type=search&arg=';
+const q = document.getElementById('q');
+const searchBtn = document.getElementById('searchBtn');
+const results = document.getElementById('results');
+const tpl = document.getElementById('cardTpl');
+function renderEmpty(msg){
+  results.innerHTML = '<div class="card"><p style="margin:0;color:var(--muted)">'+msg+'</p></div>';
+}
+async function searchAUR(query){
+  if(!query || !query.trim()){renderEmpty('Type a package name or keyword to search the AUR.');return}
+  renderEmpty('Searching...');
+  const base = API_BASE + encodeURIComponent(query.trim());
+  const candidates = [
+    base,
+    'https://corsproxy.io/?'+base,
+    'https://api.allorigins.win/raw?url='+encodeURIComponent(base),
+    'https://cors.isomorphic-git.org/'+base
+  ];
+  const timeoutMs = 8000;
+  const tryFetch = async (url)=>{
+    const controller = new AbortController();
+    const id = setTimeout(()=>controller.abort(), timeoutMs);
+    try{
+      const res = await fetch(url, {signal: controller.signal});
+      clearTimeout(id);
+      if(!res.ok) throw new Error('Bad response');
+      return await res.json();
+    }catch(e){
+      clearTimeout(id);
+      throw e;
+    }
+  };
+  try{
+    let payload = null;
+    for(const url of candidates){
+      try{
+        payload = await tryFetch(url);
+        if(payload && (payload.results || payload.type)) break;
+      }catch(e){}
+    }
+    if(!payload || !payload.results || payload.results.length===0){renderEmpty('No packages found.');return}
+    const dedup = Object.values(payload.results.reduce((m,it)=> (m[it.Name]??=it,m),{}));
+    renderResults(dedup.slice(0,50));
+  }catch(err){
+    renderEmpty('Search failed. Could not reach AUR (try again).');
+    console.error('AUR search error:', err);
+  }
+}
+function makeCmd(pkg, type){return type==='install'?`stick Install ${pkg}`:`stick remove ${pkg}`}
+function renderResults(items){
+  results.innerHTML = '';
+  for(const item of items){
+    const node = tpl.content.cloneNode(true);
+    node.querySelector('.pkgname').textContent = item.Name;
+    node.querySelector('.pkgver').textContent = item.Version || '';
+    node.querySelector('.pkgdesc').textContent = item.Description || '';
+    const installCmd = makeCmd(item.Name, 'install');
+    const removeCmd = makeCmd(item.Name, 'remove');
+    node.querySelector('.install-cmd').textContent = installCmd;
+    node.querySelector('.remove-cmd').textContent = removeCmd;
+    node.querySelector('.aur-link').href = 'https://aur.archlinux.org/packages/'+encodeURIComponent(item.Name);
+    node.querySelectorAll('.copy-btn').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const type = btn.dataset.type;
+        const txt = type==='install'?installCmd:removeCmd;
+        try{
+          await navigator.clipboard.writeText(txt);
+          btn.classList.add('copied');
+          const prev = btn.textContent;
+          btn.textContent = 'Copied';
+          setTimeout(()=>{btn.classList.remove('copied');btn.textContent = prev},1200);
+        }catch(err){
+          const ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta);
+          ta.select(); document.execCommand('copy'); ta.remove();
+          btn.classList.add('copied');
+          const prev = btn.textContent;
+          btn.textContent = 'Copied';
+          setTimeout(()=>{btn.classList.remove('copied');btn.textContent = prev},1200);
+        }
+      });
+    });
+    results.appendChild(node);
+  }
+}
+searchBtn.addEventListener('click', ()=> searchAUR(q.value));
+q.addEventListener('keydown', (e)=>{ if(e.key==='Enter') searchAUR(q.value) });
+renderEmpty('Type a package name or keyword to search the AUR.');
+  </script>
+</body>
+</html>
