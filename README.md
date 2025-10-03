@@ -9,3 +9,5 @@
 A lightweight AUR Search for the Stick Package Manager.
 
 </dev>
+
+© 2025 [ihatemustard](https://github.com/ihatemustard) & [Stick Package Manager contributors](https://github.com/Stick-Package-Manager/stick/people)
