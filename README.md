@@ -1,2 +1,2 @@
-# store
+# Stick Store
 A lightweight AUR Search for the Stick Package Manager.
